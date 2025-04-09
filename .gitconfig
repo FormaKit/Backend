@@ -1,5 +1,0 @@
-[alias]
-    push-all-main = "!git push organ main && git push repo main"
-    push-all-develop = "!git push organ develop && git push repo develop"
-    push-repo-develop = "!git push repo develop"
-    push-organ-develop = "!git push organ develop"
