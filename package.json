@@ -9,12 +9,13 @@
     "start": "node ./dist/index.js",
     "dev": "nodemon index.ts",
     "format": "prettier --write src/**/*.ts",
-    "deploy":"npx vercel deploy -y"
+    "deploy": "npx vercel deploy -y"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "express": "^5.1.0"
   },
   "devDependencies": {
