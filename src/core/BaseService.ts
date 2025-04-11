@@ -1,56 +1,102 @@
-const supabase = require("../config/supabase");
+import { SupabaseClient } from "@supabase/supabase-js";
+import { BaseModel } from "./BaseModel";
+import { ValidationError } from "./ErrorHandler";
 
-class BaseService {
-    table: string;
-    supabase: any;
-
-    constructor(tableName: string) {
-        this.table = tableName;
-        this.supabase = supabase;
+/**
+ * BaseService class for handling CRUD operations in Supabase.
+ *
+ * @template T Type of the record.
+ */
+export abstract class BaseService<T extends Record<string, any>> extends BaseModel<T> {
+    constructor(supabse: SupabaseClient, tableName: string) {
+        super(supabse, tableName);
     }
 
-    async findAll(filter = {}) {
-        const { data, error } = await this.supabase.from(this.table).select("*").match(filter);
+    /**
+     * Initializes the service with Supabase client and table name.
+     * @param {SupabaseClient} supabase Supabase client instance.
+     * @param {string} tableName Name of the table.
+     */
+    async create(item: Omit<T, "id" | "created_at" | "updated_at">): Promise<T | null> {
+        this.validateRecord(item);
 
-        if (error) throw error;
+        const { data, error } = await this.supabase
+            .from(this.tableName)
+            .insert(item)
+            .select()
+            .single<T>();
+
+            console.error('error', error)
+
         return data;
     }
 
-    async findById(id: number) {
+    /**
+     * Creates a new record in the table.
+     * @param {Omit<T, "id" | "created_at" | "updated_at">} item The record to create.
+     * @returns {Promise<T>} The created record.
+     */
+    async findById(id: string): Promise<T | null> {
         const { data, error } = await this.supabase
-            .from(this.table)
+            .from(this.tableName)
             .select("*")
             .eq("id", id)
-            .single();
+            .single<T>();
 
-        if (error) throw error;
         return data;
     }
 
-    async create(item: any) {
-        const { data, error } = await this.supabase.from(this.table).insert([item]).select();
+    /**
+     * Finds all records matching the filter.
+     * @param {Partial<T>} filter Filter for the records.
+     * @returns {Promise<T[]>} Array of records.
+     */
+    async findAll(filter: Partial<T> = {}): Promise<T[] | null> {
+        const { data, error } = await this.supabase
+            .from(this.tableName)
+            .select("*")
+            .match(filter);
 
-        if (error) throw error;
-        return data[0];
+        return data;
     }
 
-    async update(id: number, updates: any) {
+    /**
+     * Updates a record by ID.
+     * @param {string} id The ID of the record.
+     * @param {Partial<T>} updates The fields to update.
+     * @returns {Promise<T>} The updated record.
+     */
+    async update(id: string, updates: Partial<T>): Promise<T | null> {
         const { data, error } = await this.supabase
-            .from(this.table)
+            .from(this.tableName)
             .update(updates)
             .eq("id", id)
-            .select();
+            .select()
+            .single<T>();
 
-        if (error) throw error;
-        return data[0];
+        return data;
     }
 
-    async delete(id: number) {
-        const { error } = await this.supabase.from(this.table).delete().eq("id", id);
+    /**
+     * Deletes a record by ID.
+     * @param {string} id The ID of the record.
+     * @returns {Promise<void>}
+     */
+    async delete(id: string): Promise<void> {
+        const { data, error } = await this.supabase.from(this.tableName).delete().eq("id", id);
+    }
 
-        if (error) throw error;
-        return true;
+    /**
+     * Checks if any records match the filter.
+     * @param {Partial<T>} filter The filter to match.
+     * @returns {Promise<boolean>} True if records exist, false otherwise.
+     */
+    async exists(filter: Partial<T>): Promise<boolean> {
+        const { count } = await this.supabase
+            .from(this.tableName)
+            .select("*", { count: "exact", head: true })
+            .match(filter);
+
+        return (count || 0) > 0;
     }
 }
-
-module.exports = BaseService;
