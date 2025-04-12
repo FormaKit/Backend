@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { BaseModel } from "./BaseModel";
 import { ValidationError } from "./ErrorHandler";
+import { IFilter, IPagination } from "../types/filter.types";
 
 /**
  * BaseService class for handling CRUD operations in Supabase.
@@ -13,90 +14,117 @@ export abstract class BaseService<T extends Record<string, any>> extends BaseMod
     }
 
     /**
-     * Initializes the service with Supabase client and table name.
-     * @param {SupabaseClient} supabase Supabase client instance.
-     * @param {string} tableName Name of the table.
+     * Finds all records matching the filter criteria
+     * @param filter The filter criteria
+     * @returns Promise of array of records
      */
-    async create(item: Omit<T, "id" | "created_at" | "updated_at">): Promise<T | null> {
-        this.validateRecord(item);
+    async findAll(filter?: IFilter<T>): Promise<T[]> {
+        let query = this.supabase.from(this.tableName).select('*');
 
-        const { data, error } = await this.supabase
-            .from(this.tableName)
-            .insert(item)
-            .select()
-            .single<T>();
+        // Apply where conditions
+        if (filter?.where) {
+            query = query.match(filter.where);
+        }
 
-            console.error('error', error)
+        // Apply ordering
+        if (filter?.orderBy) {
+            for (const [column, direction] of Object.entries(filter.orderBy)) {
+                query = query.order(column, { ascending: direction === 'asc' });
+            }
+        }
 
-        return data;
+        // Apply pagination
+        if (filter?.limit) {
+            query = query.limit(filter.limit);
+        }
+        if (filter?.offset) {
+            query = query.range(filter.offset, filter.offset + (filter.limit || 10) - 1);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            throw new ValidationError(error.message);
+        }
+
+        return data as T[];
     }
 
     /**
-     * Creates a new record in the table.
-     * @param {Omit<T, "id" | "created_at" | "updated_at">} item The record to create.
-     * @returns {Promise<T>} The created record.
+     * Finds a record by its ID
+     * @param id The ID of the record
+     * @returns Promise of the record or null if not found
      */
     async findById(id: string): Promise<T | null> {
         const { data, error } = await this.supabase
             .from(this.tableName)
-            .select("*")
-            .eq("id", id)
-            .single<T>();
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        return data;
+        if (error) {
+            throw new ValidationError(error.message);
+        }
+
+        return data as T | null;
     }
 
     /**
-     * Finds all records matching the filter.
-     * @param {Partial<T>} filter Filter for the records.
-     * @returns {Promise<T[]>} Array of records.
+     * Creates a new record
+     * @param data The data to create
+     * @returns Promise of the created record
      */
-    async findAll(filter: Partial<T> = {}): Promise<T[] | null> {
-        const { data, error } = await this.supabase
+    async create(data: Omit<T, "id" | "created_at" | "updated_at">): Promise<T> {
+        const { data: created, error } = await this.supabase
             .from(this.tableName)
-            .select("*")
-            .match(filter);
-
-        return data;
-    }
-
-    /**
-     * Updates a record by ID.
-     * @param {string} id The ID of the record.
-     * @param {Partial<T>} updates The fields to update.
-     * @returns {Promise<T>} The updated record.
-     */
-    async update(id: string, updates: Partial<T>): Promise<T | null> {
-        const { data, error } = await this.supabase
-            .from(this.tableName)
-            .update(updates)
-            .eq("id", id)
+            .insert(data)
             .select()
-            .single<T>();
+            .single();
 
-        return data;
+        if (error) {
+            throw new ValidationError(error.message);
+        }
+
+        return created as T;
     }
 
     /**
-     * Deletes a record by ID.
-     * @param {string} id The ID of the record.
-     * @returns {Promise<void>}
+     * Updates a record
+     * @param id The ID of the record to update
+     * @param data The data to update
+     * @returns Promise of the updated record
      */
-    async delete(id: string): Promise<void> {
-        const { data, error } = await this.supabase.from(this.tableName).delete().eq("id", id);
+    async update(id: string, data: Partial<T>): Promise<T> {
+        const { data: updated, error } = await this.supabase
+            .from(this.tableName)
+            .update(data)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            throw new ValidationError(error.message);
+        }
+
+        return updated as T;
     }
 
     /**
-     * Checks if any records match the filter.
-     * @param {Partial<T>} filter The filter to match.
-     * @returns {Promise<boolean>} True if records exist, false otherwise.
+     * Checks if a record exists based on filter criteria
+     * @param filter The filter criteria
+     * @returns Promise of boolean indicating if record exists
      */
     async exists(filter: Partial<T>): Promise<boolean> {
-        const { count } = await this.supabase
+        const { data, error } = await this.supabase
             .from(this.tableName)
-            .select("*", { count: "exact", head: true })
-            .match(filter);
+            .select('id')
+            .match(filter)
+            .limit(1);
 
-        return (count || 0) > 0;
+        if (error) {
+            throw new ValidationError(error.message);
+        }
+
+        return data.length > 0;
     }
 }

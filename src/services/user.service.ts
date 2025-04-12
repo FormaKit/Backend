@@ -18,13 +18,13 @@ export class UserService extends BaseService<IUser> {
      * @param {CreateUserDTO} userData The user data to create.
      * @returns {Promise<User>} The created user.
      */
-    async createUser(userData: ICreateUserDTO): Promise<IUser> {
-        const existingEmail = await this.findAll({ email: userData.email });
+    public async createUser(userData: ICreateUserDTO): Promise<IUser> {
+        const existingEmail = await this.findAll({where: { email: userData.email }});
         if (existingEmail && existingEmail.length > 0) {
             throw new ValidationError("Email already exists");
         }
 
-        const existingUsername = await this.findAll({ username: userData.username });
+        const existingUsername = await this.findAll({where: { username: userData.username }});
         if (existingUsername && existingUsername.length > 0) {
             throw new ValidationError("Username already taken");
         }
@@ -53,8 +53,8 @@ export class UserService extends BaseService<IUser> {
      * @param {string} password The user's password.
      * @returns {Promise<User>} The authenticated user.
      */
-    async authenticate(email: string, password: string): Promise<IUser> {
-        const user = await this.findAll({ email: email });
+    public async authenticate(email: string, password: string): Promise<IUser> {
+        const user = await this.findAll({ where: {email: email} });
         if (!user || user.length === 0) {
             throw new AuthError();
         }
