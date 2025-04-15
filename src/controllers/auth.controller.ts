@@ -61,11 +61,11 @@ export class AuthController extends BaseController<IUserModel> {
                   const user = await this.authService.authenticate(email, password);
 
                   req.user = {
-                    id: user.id,
-                    email: user.email,
-                    role: String(user.role_id),
-                    session_id: ""
-                  }
+                        id: user.id,
+                        email: user.email,
+                        role: String(user.role_id),
+                        session_id: '',
+                  };
 
                   // Create session
                   await this.sessionController.createSession(req, res, next, user);

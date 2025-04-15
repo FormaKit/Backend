@@ -109,9 +109,9 @@ export class AuthService extends BaseService<IUserModel> {
             userId: number,
             data: Partial<Omit<IUserModel, 'id' | 'password' | 'created_at' | 'updated_at'>>
       ): Promise<IUserModel> {
-        const user = await this.findById(userId);
-        if(!user) throw new NotFoundError("User not found");
+            const user = await this.findById(userId);
+            if (!user) throw new NotFoundError('User not found');
 
-        return await this.update(userId, data);
+            return await this.update(userId, data);
       }
 }

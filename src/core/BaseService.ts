@@ -13,7 +13,7 @@ export abstract class BaseService<T extends Record<string, any>> extends BaseMod
 
       constructor(supabse: SupabaseClient, tableName: string) {
             super(supabse, tableName);
-            this.SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10
+            this.SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10;
       }
 
       /**

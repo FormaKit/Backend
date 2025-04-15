@@ -75,6 +75,6 @@ export class SessionService extends BaseService<ISessionModel> {
        * @param userId -- number
        */
       async endAllSessions(userId: number): Promise<void> {
-            await this.deleteMany({user_id: userId});
+            await this.deleteMany({ user_id: userId });
       }
 }
