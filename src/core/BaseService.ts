@@ -9,8 +9,11 @@ import { IFilter, IPagination } from '../types/filter.types';
  * @template T Type of the record.
  */
 export abstract class BaseService<T extends Record<string, any>> extends BaseModel<T> {
+      protected readonly SALT_ROUNDS: number;
+
       constructor(supabse: SupabaseClient, tableName: string) {
             super(supabse, tableName);
+            this.SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10
       }
 
       /**
@@ -55,7 +58,7 @@ export abstract class BaseService<T extends Record<string, any>> extends BaseMod
        * @param id The ID of the record
        * @returns Promise of the record or null if not found
        */
-      async findById(id: string): Promise<T | null> {
+      async findById(id: number): Promise<T | null> {
             const { data, error } = await this.supabase
                   .from(this.tableName)
                   .select('*')
