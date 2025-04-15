@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Abstract base class for data models interacting with Supabase.
@@ -6,21 +6,24 @@ import { SupabaseClient } from "@supabase/supabase-js";
  * @template T Type of the record this model handles
  */
 export abstract class BaseModel<T> {
-    /**
-     * Creates a new BaseModel instance
-     * @param {SupabaseClient} supabase Supabase client instance
-     * @param {string} tableName Name of the database table
-     */
-    constructor(protected supabase: SupabaseClient, protected tableName: string) {}
+      /**
+       * Creates a new BaseModel instance
+       * @param {SupabaseClient} supabase Supabase client instance
+       * @param {string} tableName Name of the database table
+       */
+      constructor(
+            protected supabase: SupabaseClient,
+            protected tableName: string
+      ) {}
 
-    /**
-     * Validates a record before database operations
-     * @param {Omit<T, "id" | "created_at" | "updated_at">} record The record to validate
-     * @throws {Error} If record is null or undefined
-     */
-    protected validateRecord(record: Omit<T, "id" | "created_at" | "updated_at">): void {
-        if (!record) {
-            throw new Error("Record cannot be null or undefined");
-        }
-    }
+      /**
+       * Validates a record before database operations
+       * @param {Omit<T, "id" | "created_at" | "updated_at">} record The record to validate
+       * @throws {Error} If record is null or undefined
+       */
+      protected validateRecord(record: Omit<T, 'id' | 'created_at' | 'updated_at'>): void {
+            if (!record) {
+                  throw new Error('Record cannot be null or undefined');
+            }
+      }
 }

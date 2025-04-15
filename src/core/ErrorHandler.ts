@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from 'express';
 
 /**
  * Custom error class that extends the built-in Error class.
@@ -8,24 +8,28 @@ import { NextFunction, Request, Response } from "express";
  * @extends {Error}
  */
 export class AppError extends Error {
-    constructor(public message: string, public statusCode: number, public details?: any) {
-        super(message);
-        Object.setPrototypeOf(this, AppError.prototype);
-    }
+      constructor(
+            public message: string,
+            public statusCode: number,
+            public details?: any
+      ) {
+            super(message);
+            Object.setPrototypeOf(this, AppError.prototype);
+      }
 
-    /**
-     * Serializes the error object for consistent response formatting.
-     *
-     * @returns {{ message: string; statusCode: number; details?: any }} The serialized error object.
-     */
-    serialize(): { message: string; statusCode: number; details?: any } {
-        const { message, statusCode, details } = this;
-        return {
-            message,
-            statusCode,
-            details,
-        };
-    }
+      /**
+       * Serializes the error object for consistent response formatting.
+       *
+       * @returns {{ message: string; statusCode: number; details?: any }} The serialized error object.
+       */
+      serialize(): { message: string; statusCode: number; details?: any } {
+            const { message, statusCode, details } = this;
+            return {
+                  message,
+                  statusCode,
+                  details,
+            };
+      }
 }
 
 /**
@@ -35,9 +39,9 @@ export class AppError extends Error {
  * @extends {AppError}
  */
 export class NotFoundError extends AppError {
-    constructor(message: string = "Resource not found") {
-        super(message, 404);
-    }
+      constructor(message: string = 'Resource not found') {
+            super(message, 404);
+      }
 }
 
 /**
@@ -49,9 +53,9 @@ export class NotFoundError extends AppError {
  * @param {any} [details] The additional details for the error.
  */
 export class ValidationError extends AppError {
-    constructor(message: string = "Validation failed", details?: any) {
-        super(message, 400, details);
-    }
+      constructor(message: string = 'Validation failed', details?: any) {
+            super(message, 400, details);
+      }
 }
 
 /**
@@ -62,9 +66,9 @@ export class ValidationError extends AppError {
  * @param {string} [message="Authentication failed"] The error message.
  */
 export class AuthError extends AppError {
-    constructor(message: string = "Authentication faild") {
-        super(message, 401);
-    }
+      constructor(message: string = 'Authentication faild') {
+            super(message, 401);
+      }
 }
 
 /**
@@ -75,9 +79,9 @@ export class AuthError extends AppError {
  * @param {string} [message="Permission denied"] The error message.
  */
 export class PermissionError extends AppError {
-    constructor(message: string = "Permission denied") {
-        super(message, 403);
-    }
+      constructor(message: string = 'Permission denied') {
+            super(message, 403);
+      }
 }
 
 /**
@@ -90,14 +94,14 @@ export class PermissionError extends AppError {
  * @param {NextFunction} next The next middleware function.
  */
 export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
-    if (err instanceof AppError) {
-        const serialized = err.serialize();
-        res.status(serialized.statusCode).json(serialized);
-    } else {
-        console.error("Unexpected Error:", err);
-        res.status(500).json({
-            message: err.message || "Internal server error",
-            statusCode: 500,
-        });
-    }
+      if (err instanceof AppError) {
+            const serialized = err.serialize();
+            res.status(serialized.statusCode).json(serialized);
+      } else {
+            console.error('Unexpected Error:', err);
+            res.status(500).json({
+                  message: err.message || 'Internal server error',
+                  statusCode: 500,
+            });
+      }
 }

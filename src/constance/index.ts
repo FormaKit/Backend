@@ -1,4 +1,4 @@
 export const tableNames = {
-    user: "users",
-    session: "user_sessions",
+      user: 'users',
+      session: 'user_sessions',
 };

@@ -1,5 +1,5 @@
 export interface IErrorType {
-    message: string;
-    code?: number;
-    details?: any;
+      message: string;
+      code?: number;
+      details?: any;
 }
