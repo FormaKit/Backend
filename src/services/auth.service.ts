@@ -1,119 +1,117 @@
-// import { hash } from "crypto";
-// import { SupabaseConfig } from "../config/supabase";
-// import { BaseService } from "../core/BaseService";
-// import { AuthError, ValidationError } from "../core/ErrorHandler";
-// import { ICreateUserDTO, IUser } from "../types/model/user.types";
-// import { compare } from "bcrypt";
+import { AuthError } from '@supabase/supabase-js';
+import { SupabaseConfig } from '../config/supabase';
+import { tableNames } from '../constance';
+import { BaseService } from '../core/BaseService';
+import { NotFoundError, ValidationError } from '../core/ErrorHandler';
+import { IUserModel } from '../types/model/user.type';
+import { compare, hash } from 'bcrypt';
 
-import { compare } from "bcrypt";
-import { SupabaseConfig } from "../config/supabase";
-import { tableNames } from "../constance";
-import { BaseService } from "../core/BaseService";
-import { AuthError } from "../core/ErrorHandler";
-import { IUserModel } from "../types/model/user.type";
+export class AuthService extends BaseService<IUserModel> {
+      constructor() {
+            super(SupabaseConfig.getClient(), tableNames.user);
+      }
 
-// export abstract class AuthService extends BaseService<any> {
-//   protected salt: string;
+      /**
+       * Authenticate a user with email and password
+       * @param email -- string
+       * @param password -- string
+       * @returns user info -- IUserModel
+       */
+      async authenticate(email: string, password: string): Promise<IUserModel> {
+            if (!email || !password) {
+                  throw new ValidationError('Email and password are required');
+            }
 
-//   constructor(protected tableName: string) {
-//     super(SupabaseConfig.getClient(), tableName);
-//     this.salt = String(process.env.SALT);
-//   }
+            //Find user
+            const users = await this.findAll({
+                  where: { email: email.toLocaleLowerCase() },
+            });
 
-//   /**
-//    * Creates a new user.
-//    * @param {CreateUserDTO} userData The user data to create.
-//    * @returns {Promise<User>} The created user.
-//    */
-//   public async createUser(userData: ICreateUserDTO): Promise<IUser> {
-//     const existingEmail = await this.findAll({ where: { email: userData.email } });
-//     if (existingEmail && existingEmail.length > 0) {
-//       throw new ValidationError("Email already exists");
-//     }
+            if (!users || users.length === 0) {
+                  throw new AuthError('Invalid credentials');
+            }
 
-//     const existingUsername = await this.findAll({ where: { username: userData.username } });
-//     if (existingUsername && existingUsername.length > 0) {
-//       throw new ValidationError("Username already taken");
-//     }
+            const user = users[0];
 
-//     const hashedPassword = hash(userData.password, this.salt);
+            //Check if user is active
+            if (!user.is_active) {
+                  throw new AuthError('Account is disabled');
+            }
 
-//     const user = await this.create({
-//       username: userData.username,
-//       email: userData.email,
-//       password: hashedPassword,
-//       role_id: userData.role_id || 1,
-//       is_active: true,
-//     });
+            //Verify password
+            const isPasswordValid = await compare(password, user.password);
+            if (!isPasswordValid) {
+                  throw new AuthError('Invalid credentials');
+            }
 
-//     if (!user) {
-//       console.log("user", user);
-//       throw new Error("Failed to create user");
-//     }
+            return user;
+      }
 
-//     return user;
-//   }
+      /**
+       * Register a new user
+       */
+      async register(
+            userData: Omit<IUserModel, 'id' | 'created_at' | 'updated_at' | 'is_active'>
+      ): Promise<IUserModel> {
+            if (!userData.email || !userData.password || !userData.username) {
+                  throw new ValidationError('Email, password and username are required');
+            }
 
-//   /**
-//    * Authenticates a user by email and password.
-//    * @param {string} email The user's email.
-//    * @param {string} password The user's password.
-//    * @returns {Promise<User>} The authenticated user.
-//    */
-//   public async authenticate(email: string, password: string): Promise<IUser> {
-//     const user = await this.findAll({ where: { email: email } });
-//     if (!user || user.length === 0) {
-//       throw new AuthError();
-//     }
+            //check if email already exists
+            const existingUser = await this.findAll({
+                  where: { email: userData.email.toLowerCase() },
+            });
+            if (existingUser && existingUser.length > 0) {
+                  throw new ValidationError('Email already exists');
+            }
 
-//     //Check if the password is currect
-//     const isPasswordValid = await compare(password, user[0].password);
-//     if (!isPasswordValid) {
-//       throw new AuthError();
-//     }
+            const hashedPassword = await hash(userData.password, this.SALT_ROUNDS);
 
-//     //Check if the user is active
-//     if (!user[0].is_active) {
-//       throw new AuthError("Accound is disabled");
-//     }
+            // Create user
+            const user = await this.create({
+                  ...userData,
+                  email: userData.email.toLowerCase(),
+                  password: hashedPassword,
+                  is_active: true,
+            });
 
-//     return user[0];
-//   }
-// }
+            return user;
+      }
+      /**
+       * Change user password
+       */
+      async changePassword(
+            userId: number,
+            currentPassword: string,
+            newPassword: string
+      ): Promise<void> {
+            const user = await this.findById(userId);
+            if (!user) {
+                  throw new NotFoundError('User not found');
+            }
 
-export abstract class AuthService extends BaseService<IUserModel> {
-  constructor() {
-    super(SupabaseConfig.getClient(), tableNames.user);
-  }
+            // Verify current password
+            const isPasswordValid = await compare(currentPassword, user.password);
+            if (!isPasswordValid) {
+                  throw new AuthError('Current password is incorrect');
+            }
 
-  /**
-   * Authenticates a user by email and password.
-   * @param {string} email The user's email.
-   * @param {string} password The user's password.
-   * @returns {Promise<User>} The authenticated user.
-   */
-  public async authenticate(email: string, password: string): Promise<IUserModel> {
-    const user = await this.findAll({ where: { email: email } });
-    if (!user || user.length === 0) {
-      throw new AuthError();
-    }
+            const hashedPassword = await hash(newPassword, this.SALT_ROUNDS);
 
-    //Check if the password is currect
-    const isPasswordValid = await compare(password, user[0].password);
-    if (!isPasswordValid) {
-      throw new AuthError();
-    }
+            // Update password
+            await this.update(userId, { password: hashedPassword });
+      }
 
-    //Check if the user is active
-    if (!user[0].is_active) {
-      throw new AuthError("Accound is disabled");
-    }
+      /**
+       * Update user profile
+       */
+      async updateProfile(
+            userId: number,
+            data: Partial<Omit<IUserModel, 'id' | 'password' | 'created_at' | 'updated_at'>>
+      ): Promise<IUserModel> {
+        const user = await this.findById(userId);
+        if(!user) throw new NotFoundError("User not found");
 
-    return user[0];
-  }
-
-
-  public async logout() {}
-
-  public async getAllCurrentUsersSession() {}
+        return await this.update(userId, data);
+      }
 }
