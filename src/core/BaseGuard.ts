@@ -9,27 +9,42 @@ export abstract class BaseGuard {
       /**
        * Abstract method to be implemented by concrete guard classes.
        * Contains the core logic to determine if a request should be allowed.
-       * @param {Request} req Express request object
-       * @returns {boolean | AppError} Returns true if authorized, false or AppError if not
+       *
+       * @param req - Express request object
+       * @returns Promise<boolean | AppError> - Returns true if authorized, or an AppError if not
        */
-      protected abstract check(req: Request): boolean | AppError;
+      protected abstract check(req: Request): Promise<boolean | AppError>;
 
       /**
        * Express middleware function that uses the guard's check method to authorize requests.
-       * Automatically handles successful and failed authorization scenarios.
-       * @param {Request} req Express request object
-       * @param {Response} res Express response object
-       * @param {NextFunction} next Express next function
+       * This method is used in route definitions to protect routes.
+       *
+       * @param req - Express request object
+       * @param res - Express response object
+       * @param next - Express next function
        */
-      public canActivate(req: Request, res: Response, next: NextFunction): void {
-            const result = this.check(req);
+      public async canActivate(req: Request, res: Response, next: NextFunction): Promise<void> {
+            try {
+                  // Call the check method implemented by child classes
+                  const result = await this.check(req);
 
-            if (result === true) {
-                  next();
-            } else if (result instanceof AppError) {
-                  next(result); // Pass to error handler
-            } else {
-                  next(new AppError('Unauthorized', 401));
+                  if (result === true) {
+                        // Request is authorized, proceed to next middleware/controller
+                        next();
+                  } else if (result instanceof AppError) {
+                        // Specific error occurred during authorization
+                        next(result);
+                  } else {
+                        // Unexpected result, throw generic unauthorized error
+                        next(new AppError('Unauthorized', 401));
+                  }
+            } catch (error) {
+                  // Handle any unexpected errors
+                  if (error instanceof AppError) {
+                        next(error);
+                  } else {
+                        next(new AppError('Guard check failed', 500));
+                  }
             }
       }
 }

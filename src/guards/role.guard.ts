@@ -1,6 +1,14 @@
 import { Request } from 'express';
 import { BaseGuard } from '../core/BaseGuard';
 import { AppError, AuthError, PermissionError } from '../core/ErrorHandler';
+import { roles } from '../constance';
+
+interface UserWithRole {
+      id: number;
+      email: string;
+      role: string;
+      session_id: string;
+}
 
 /**
  * Guard that restricts access based on user roles
@@ -9,21 +17,19 @@ import { AppError, AuthError, PermissionError } from '../core/ErrorHandler';
 export class RoleGuard extends BaseGuard {
       /**
        * Creates a RoleGuard instance
-       * @param {number[]} allowedRoles Array of role IDs that are permitted
+       * @param allowedRoles Array of role IDs that are permitted
        */
-      constructor(private readonly allowedRoles: number[]) {
+      constructor(private readonly allowedRoles: string[]) {
             super();
       }
 
       /**
        * Checks if the requesting user has an allowed role
-       * @param {Request} req Express request object
-       * @returns {boolean | AppError}
-       * @throws {AuthError} If user is not authenticated
-       * @throws {PermissionError} If user lacks required role
+       * @param req Express request object
+       * @returns Promise<boolean | AppError>
        */
-      protected check(req: Request): boolean | AppError {
-            const user = req.user;
+      protected async check(req: Request): Promise<boolean | AppError> {
+            const user = req.user as UserWithRole;
 
             if (!user) {
                   throw new AuthError('Authentication required');
@@ -33,18 +39,43 @@ export class RoleGuard extends BaseGuard {
                   throw new AuthError('User role missing');
             }
 
-            const userRole = Number(user.role);
+            // Check if user's role is in the allowed roles list
+            if (!this.allowedRoles.includes(user.role)) {
+                  const roleNames = this.allowedRoles.map((roleId) => {
+                        const role = Object.entries(roles).find(([_, id]) => id === roleId);
+                        return role ? role[0] : roleId;
+                  });
 
-            if (isNaN(userRole)) {
-                  throw new AuthError('Invalid role format');
-            }
-
-            if (!this.allowedRoles.includes(userRole)) {
                   throw new PermissionError(
-                        `Requires one of these roles: ${this.allowedRoles.join(', ')}`
+                        `Access denied. Requires one of these roles: ${roleNames.join(', ')}`
                   );
             }
 
             return true;
+      }
+
+      /**
+       * Static factory method to create a guard for specific roles
+       * @param roleIds Array of role IDs
+       * @returns RoleGuard instance
+       */
+      static forRoles(...roleIds: string[]): RoleGuard {
+            return new RoleGuard(roleIds);
+      }
+
+      /**
+       * Static factory method to create a guard for admin roles (owner and manager)
+       * @returns RoleGuard instance
+       */
+      static forAdmins(): RoleGuard {
+            return new RoleGuard([roles.owner, roles.manager]);
+      }
+
+      /**
+       * Static factory method to create a guard for owner role only
+       * @returns RoleGuard instance
+       */
+      static forOwners(): RoleGuard {
+            return new RoleGuard([roles.owner]);
       }
 }

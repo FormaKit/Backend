@@ -4,10 +4,15 @@ import { BaseService } from '../core/BaseService';
 import { SessionService } from '../services/session.service';
 import { ISessionModel } from '../types/model/session.type';
 import { AuthError } from '../core/ErrorHandler';
+import { IUserModel } from '../types/model/user.type';
+import { sign } from 'jsonwebtoken';
 
 export class SessionController extends BaseController<ISessionModel> {
+      protected JWT_SECRET: string;
+
       constructor() {
             super(new SessionService());
+            this.JWT_SECRET = String(process.env.JWT_SECRET);
       }
 
       protected mapRequestToDto(req: Request): Partial<ISessionModel> {
@@ -27,17 +32,52 @@ export class SessionController extends BaseController<ISessionModel> {
       /**
        * Create a new session when user logs in
        */
-      async createSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+      async createSession(
+            req: Request,
+            res: Response,
+            next: NextFunction,
+            authenticatedUser: IUserModel
+      ): Promise<void> {
             try {
                   const sessionDataDTO = this.mapRequestToDto(req);
                   if (!sessionDataDTO.user_id) {
                         throw new AuthError('User ID is required');
                   }
 
-                  const session = await this.sessionService.createSession(
-                        sessionDataDTO as Omit<ISessionModel, 'id' | 'created_at' | 'updated_at'>
+                  const session_token = sign(
+                        JSON.stringify({
+                              userId: authenticatedUser.id,
+                              email: authenticatedUser.email,
+                              role: authenticatedUser.role_id,
+                        }),
+                        this.JWT_SECRET,
+                        { expiresIn: '15Days' }
                   );
-                  this.sendSuccess(res, session, 201);
+                  const expire_at = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+                  const session = await this.sessionService.createSession({
+                        ...sessionDataDTO,
+                        session_token,
+                        expire_at,
+                  } as Omit<ISessionModel, 'id' | 'created_at' | 'updated_at'>);
+
+                  req.user = {
+                        id: authenticatedUser.id,
+                        email: authenticatedUser.email,
+                        role: String(authenticatedUser.role_id),
+                        session_id: String(session.id),
+                  };
+                  this.sendSuccess(res, {
+                        user: {
+                              userId: authenticatedUser.id,
+                              email: authenticatedUser.email,
+                              role: authenticatedUser.role_id,
+                        },
+                        session: {
+                              id: session.id,
+                              expire_at,
+                              session_token,
+                        },
+                  });
             } catch (err) {
                   next(err);
             }
